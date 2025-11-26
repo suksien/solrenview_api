@@ -16,7 +16,8 @@ def setup_config():
   return (headers, url)
 
 def construct_params(start_date, end_date, data_interval=300):
-
+  # can do multi-day queries, but the length of the returned data is capped at 500
+  # i.e. if you do multi-day queries at 5-min level, the returned data will be cut off
   end_interval = f'{start_date} 04:' + '%02d' % (int(data_interval/60)) + ':00'
 
   common_params = {
@@ -52,7 +53,7 @@ def construct_params(start_date, end_date, data_interval=300):
     'siteId': '6073',
     'queryNo': '4',
     'startIntervalTs': f'{start_date} 04:00:00',
-    'endIntervalTs': f'{end_interval}',
+    'endIntervalTs': f'{start_date} 04:05:00',
     'endDuration': f'{end_date} 00:00:00',
     'dataInterval': data_interval,
     'deviceindices': '0^35346^Inverter 1  [1013821839182 PVI 60TL]^3;0^35347^Inverter 2  [1013821839191 PVI 60TL]^3',
@@ -113,6 +114,7 @@ def get_timestamp(response, start_date):
 def explore_response_shape(resp):
   # response_arr[0].json() returns a dict
   # keys for the dict are ['chart', 'categories', 'dataset', 'styles']
+  # `categories` provide info on the timestamp
   # 'dataset' value is a list of length 12 (6 data from inverter 1 & 2 and 6 data from inverter 1 & 6)
   # each elem from 'dataset' is a dict with keys ['seriesname', 'renderas', 'parentyaxis', 'data']
   # 'seriesname' is similar to the column name of the 'data'
@@ -124,7 +126,7 @@ def explore_response_shape(resp):
   for dict_obj in arr:
     print(dict_obj['seriesname'], len(dict_obj['data']), type(dict_obj['data']))
 
-def get_inverter_data_arr(response_arr, inverter_num):
+def get_inverter_data_arr(response_arr, inverter_num, timestamp):
   if inverter_num == 1:
     start_index, end_index = 0, 6
     response_index = 0
@@ -137,32 +139,33 @@ def get_inverter_data_arr(response_arr, inverter_num):
   
   arr = response_arr[response_index].json()['dataset'][start_index : end_index]
 
-  
-  data = {
-    'config': 0,
-    'voltage': 0,
-    'current': 0,
+  # pat self: 
+  # great idea to interatively transform the data into the final desired format
+  # by creating an interim data that's easier to work with
+  flat_data = {
+    'timestamp': timestamp.to_list(),
+    'voltage_str1': [float(elem['value']) if elem['value'] != '' else np.nan for elem in arr[0]['data']],
+    'voltage_str2': [float(elem['value']) if elem['value'] != '' else np.nan for elem in arr[1]['data']],
+    'voltage_str3': [float(elem['value']) if elem['value'] != '' else np.nan for elem in arr[2]['data']],
+    'current_str1': [float(elem['value']) if elem['value'] != '' else np.nan for elem in arr[3]['data']],
+    'current_str2': [float(elem['value']) if elem['value'] != '' else np.nan for elem in arr[4]['data']],
+    'current_str3': [float(elem['value']) if elem['value'] != '' else np.nan for elem in arr[5]['data']],
   }
-  
-  volt_data = []
-  curr_data = []
 
-  voltage1 = arr[0]['data']
-  current1 = arr[3]['data']
-  
-  for i in range(len(voltage1)):
-    volt_data.append(voltage1['value'])
-    curr_data.append(current1['value'])
+  data_len = len(flat_data['timestamp'])
 
+  data = {
+    'timestamp': flat_data['timestamp'] + flat_data['timestamp'] + flat_data['timestamp'],
+    'inverter': [inverter_num] * data_len * 3,
+    'str': [1] * data_len + [2] * data_len + [3] * data_len,
+    'voltage': flat_data['voltage_str1'] + flat_data['voltage_str2'] + flat_data['voltage_str3'],
+    'current': flat_data['current_str1'] + flat_data['current_str2'] + flat_data['current_str3'],
+  }
 
+  flat_data = None # free up space
 
-  # config, voltage, current
-  # inv1-str1, .., ...
-  # inv1-str1, ..., ...
-  # inv1-str2, ..., ...
-
-  return data
-  # todo: unpack arr to extract I and V
+  df = pd.DataFrame(data)
+  return df
 
 ####### TBD
 
