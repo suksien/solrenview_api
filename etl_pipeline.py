@@ -3,6 +3,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import utils
+from google.cloud import storage
 
 # extract weather data from sftp server into csv file
 
@@ -21,6 +22,12 @@ def extract_electrical_data(start_date, end_date):
   
   df = pd.DataFrame().append(df_arr)
   df.to_csv(f'data/extracted/{start_date}_{end_date}.csv')
+
+def load_csv_to_bucket(csv_file, bucket_name = "solrenview_data"):
+  storage_client = storage.Client()
+  bucket = storage_client.bucket(bucket_name)
+  blob = bucket.blob(f'data/extracted/{start_date}_{end_date}.csv')
+  blob.upload_from_filename(csv_file)
 
 # load csv file to cloud storage??
 
