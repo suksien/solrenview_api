@@ -8,7 +8,7 @@ def get_data(url):
   data = out.json()
   items = data['items']
   df = pd.DataFrame(items)
-  df.drop(columns=['@id', 'eaRegionName', 'floodArea'])
+  df.drop(columns=['@id', 'eaRegionName', 'floodArea'], inplace=True)
   return df
 
 def save_dataframe_to_storage(df, bucket_name):
