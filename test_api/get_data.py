@@ -20,3 +20,10 @@ def save_dataframe_to_storage(df, bucket_name):
     time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     blob = bucket.blob(f'{time_now}.csv')
     blob.upload_from_string(csv_string, content_type='text/csv')
+
+'''
+TODO:
+- dump csv content into BigQuery
+- only add data to BigQuery if the severity level of the flood has changed, otherwise
+throw away the duplicate data
+'''
