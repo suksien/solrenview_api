@@ -38,12 +38,13 @@ def load_csv_to_bucket(csv_file, bucket_name = "solrenview_data"):
 # simulate daily extraction
 from datetime import date, timedelta
 
-d1, d2 = date(2025, 10, 14), date(2025, 10, 15)
+d1 = date(2025, 11, 14)
+d2 = d1 + timedelta(days=1)
 
 start_date_arr = [d1.strftime('%Y-%m-%d')]
 end_date_arr = [d2.strftime('%Y-%m-%d')]
 
-for i in range(5):
+for i in range(20):
   d1 += timedelta(days=1)
   d2 += timedelta(days=1)
   start_date_arr.append(d1.strftime('%Y-%m-%d'))
@@ -51,4 +52,5 @@ for i in range(5):
 
 for i in range(len(start_date_arr)):
   start_date, end_date = start_date_arr[i], end_date_arr[i]
+  print(start_date)
   extract_electrical_data(start_date, end_date)
