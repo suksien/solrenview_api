@@ -3,10 +3,12 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import utils
-from google.cloud import storage
+try:
+  from google.cloud import storage
+except ImportError:
+  pass
 
-# extract weather data from sftp server into csv file
-
+# TODO: extract weather data from sftp server into csv file
 
 # extract electrical data from web api into csv file
 def extract_electrical_data(start_date, end_date):
@@ -20,26 +22,26 @@ def extract_electrical_data(start_date, end_date):
   for id in inverter_id:
     df_arr.append(utils.get_inverter_data_arr(response_arr, 1, timestamp))
   
-  #df = pd.DataFrame().append(df_arr)
   df = pd.concat(df_arr)
-  df.to_csv(f'data/extracted/{start_date}_{end_date}.csv')
+  #df.to_csv(f'data/extracted/{start_date}_{end_date}.csv')
+  df.to_csv(f'C:\\Users\\fs139446\\Desktop\\work\\inverter\\ut_ull_latest\\final\\PP_timeshift\\raw\\{start_date}_{end_date}.csv')
 
 # https://stackoverflow.com/questions/40683702/upload-csv-file-to-google-cloud-storage-using-python
+'''
 def load_csv_to_bucket(csv_file, bucket_name = "solrenview_data"):
   storage_client = storage.Client()
   bucket = storage_client.bucket(bucket_name)
   blob = bucket.blob(f'data/extracted/{start_date}_{end_date}.csv')
   blob.upload_from_filename(csv_file)
-
-# def transform_load_electrical_data():
+'''
 
 # simulate daily extraction
 from datetime import date, timedelta
 
-d1, d2 = date(2025, 10, 1), date(2025, 10, 2)
+d1, d2 = date(2025, 10, 14), date(2025, 10, 15)
 
-start_date_arr = ['2025-10-01']
-end_date_arr = ['2025-10-02']
+start_date_arr = [d1.strftime('%Y-%m-%d')]
+end_date_arr = [d2.strftime('%Y-%m-%d')]
 
 for i in range(5):
   d1 += timedelta(days=1)
