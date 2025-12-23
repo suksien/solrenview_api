@@ -20,11 +20,11 @@ def extract_electrical_data(start_date, end_date):
 
   df_arr = []
   for id in inverter_id:
-    df_arr.append(utils.get_inverter_data_arr(response_arr, 1, timestamp))
+    df_arr.append(utils.get_inverter_data_arr(response_arr, id, timestamp))
   
   df = pd.concat(df_arr)
   #df.to_csv(f'data/extracted/{start_date}_{end_date}.csv')
-  df.to_csv(f'C:\\Users\\fs139446\\Desktop\\work\\inverter\\ut_ull_latest\\final\\PP_timeshift\\raw\\{start_date}_{end_date}.csv')
+  df.to_csv(f'/Users/suksientie/Desktop/solren_data/{start_date}_{end_date}.csv')
 
 # https://stackoverflow.com/questions/40683702/upload-csv-file-to-google-cloud-storage-using-python
 '''
