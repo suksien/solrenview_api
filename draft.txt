@@ -1,0 +1,10 @@
+1. Grab daily data from solrenview API
+2. Grab latest met data from sftp server
+—> 2 data sources
+
+3. Load electrical and MET data to bucket
+
+4. Trigger BigQuery master table update upon new files in bucket
+
++ Master table that combines data from 2 input sources
++ Batch processing and pub/sub trigger
