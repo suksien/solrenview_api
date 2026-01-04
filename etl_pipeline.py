@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
+import logging
 import utils
 try:
   from google.cloud import storage
@@ -44,12 +45,16 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
     # 2. Initialize GCS client and get the bucket
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(f'{filepath}/{filename}')
+    blob_name = f'{filepath}/{filename}'
+    blob = bucket.blob(blob_name)
     
     # 3. Upload the CSV data from the buffer
     blob.upload_from_string(csv, content_type='text/csv')
     
-    print(f"DataFrame uploaded to gs://{bucket_name}/{blob}")
+    logging.info(f"DataFrame uploaded to gs://{bucket_name}/{blob_name}")
+
+# logging
+logging.basicConfig(filename='logs.txt', level=logging.INFO, filemode='a')
 
 # simulate daily extraction
 from datetime import date, timedelta
@@ -58,7 +63,7 @@ d1 = date(2026, 1, 2)
 d2 = d1 + timedelta(days=1)
 
 ndays = (date.today() - d1).days
-print(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
+logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
 
 start_date_arr = [d1.strftime('%Y-%m-%d')]
 end_date_arr = [d2.strftime('%Y-%m-%d')]
@@ -71,9 +76,9 @@ for i in range(ndays - 1):
 
 for i in range(len(start_date_arr)):
   start_date, end_date = start_date_arr[i], end_date_arr[i]
-  print(start_date)
   df = extract_electrical_data(start_date, end_date)
   bucket_name = 'uni_toledo'
   filepath = 'waiting_to_load'
-  filename = '{start_date}_{end_date}.csv'
-  upload_df_to_gcs(df, bucket_name , filepath, filename)
+  filename = f'{start_date}_{end_date}.csv'
+  #upload_df_to_gcs(df, bucket_name , filepath, filename)
+  df.to_csv(f'{filepath}/{filename}')
