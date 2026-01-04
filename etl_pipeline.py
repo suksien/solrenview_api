@@ -8,8 +8,6 @@ try:
 except ImportError:
   pass
 
-# TODO: extract weather data from sftp server into csv file
-
 # extract electrical data from web api into csv file
 def extract_electrical_data(start_date, end_date):
   inverter_id = [1, 2, 6]
@@ -53,21 +51,19 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
     
     print(f"DataFrame uploaded to gs://{bucket_name}/{blob}")
 
-
 # simulate daily extraction
 from datetime import date, timedelta
 
-d1 = date(2025, 11, 14)
+d1 = date(2026, 1, 2)
 d2 = d1 + timedelta(days=1)
 
 ndays = (date.today() - d1).days
-print(f"Downloading {ndays} days of data from {d1} to {date.today()}")
+print(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
 
-'''
 start_date_arr = [d1.strftime('%Y-%m-%d')]
 end_date_arr = [d2.strftime('%Y-%m-%d')]
 
-for i in range(ndays):
+for i in range(ndays - 1):
   d1 += timedelta(days=1)
   d2 += timedelta(days=1)
   start_date_arr.append(d1.strftime('%Y-%m-%d'))
@@ -76,5 +72,8 @@ for i in range(ndays):
 for i in range(len(start_date_arr)):
   start_date, end_date = start_date_arr[i], end_date_arr[i]
   print(start_date)
-  extract_electrical_data(start_date, end_date)
-'''
+  df = extract_electrical_data(start_date, end_date)
+  bucket_name = 'uni_toledo'
+  filepath = 'waiting_to_load'
+  filename = '{start_date}_{end_date}.csv'
+  upload_df_to_gcs(df, bucket_name , filepath, filename)
