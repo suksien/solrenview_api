@@ -1,4 +1,3 @@
-import requests
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
@@ -8,6 +7,7 @@ try:
   from google.cloud import storage
 except ImportError:
   pass
+import glob
 
 # extract electrical data from web api into csv file
 def extract_electrical_data(start_date, end_date):
@@ -28,13 +28,14 @@ def extract_electrical_data(start_date, end_date):
   
 
 # https://stackoverflow.com/questions/40683702/upload-csv-file-to-google-cloud-storage-using-python
-'''
-def load_csv_to_bucket(csv_file, bucket_name = "solrenview_data"):
+def upload_csv_to_gcs(filename, bucket_name, filepath):
   storage_client = storage.Client()
   bucket = storage_client.bucket(bucket_name)
-  blob = bucket.blob(f'data/extracted/{start_date}_{end_date}.csv')
-  blob.upload_from_filename(csv_file)
-'''
+  blob_name = f'{filepath}/{filename.split('/')[-1]}'
+  blob = bucket.blob(blob_name)
+  blob.upload_from_filename(filename)
+
+  logging.info(f"File uploaded to gs://{bucket_name}/{blob_name}")
 
 def upload_df_to_gcs(df, bucket_name, filepath, filename):
     """Uploads a pandas DataFrame to a GCS bucket as a CSV."""
@@ -53,33 +54,43 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
     
     logging.info(f"DataFrame uploaded to gs://{bucket_name}/{blob_name}")
 
-# logging
-logging.basicConfig(filename='logs.txt', level=logging.INFO, filemode='a')
+def main():
+  # logging
+  logging.basicConfig(filename='logs.txt', level=logging.INFO, filemode='a')
 
-# simulate daily extraction
-from datetime import date, timedelta
+  # simulate daily extraction
+  from datetime import date, timedelta
 
-d1 = date(2025, 12, 24)
-d2 = d1 + timedelta(days=1)
+  d1 = date(2025, 12, 24)
+  d2 = d1 + timedelta(days=1)
 
-ndays = (date.today() - d1).days
-logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
+  ndays = (date.today() - d1).days
+  logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
 
-start_date_arr = [d1.strftime('%Y-%m-%d')]
-end_date_arr = [d2.strftime('%Y-%m-%d')]
+  start_date_arr = [d1.strftime('%Y-%m-%d')]
+  end_date_arr = [d2.strftime('%Y-%m-%d')]
 
-ndays = 3
-for i in range(ndays - 1):
-  d1 += timedelta(days=1)
-  d2 += timedelta(days=1)
-  start_date_arr.append(d1.strftime('%Y-%m-%d'))
-  end_date_arr.append(d2.strftime('%Y-%m-%d'))
+  ndays = 2
+  for i in range(ndays - 1):
+    d1 += timedelta(days=1)
+    d2 += timedelta(days=1)
+    start_date_arr.append(d1.strftime('%Y-%m-%d'))
+    end_date_arr.append(d2.strftime('%Y-%m-%d'))
 
-for i in range(len(start_date_arr)):
-  start_date, end_date = start_date_arr[i], end_date_arr[i]
-  df = extract_electrical_data(start_date, end_date)
   bucket_name = 'uni_toledo'
-  filepath = 'waiting_to_load'
-  filename = f'{start_date}_{end_date}.csv'
-  #upload_df_to_gcs(df, bucket_name , filepath, filename)
-  df.to_csv(f'{filepath}/{filename}')
+  filepath = 'data/waiting_to_load'
+  
+  # electrical data
+  for i in range(len(start_date_arr)):
+    start_date, end_date = start_date_arr[i], end_date_arr[i]
+    df = extract_electrical_data(start_date, end_date)
+    
+    filename = f'{start_date}_{end_date}.csv'
+    upload_df_to_gcs(df, bucket_name , filepath, filename)
+  
+  # met data
+  met_file = glob.glob('data/waiting_to_load/MET*')[0]
+  upload_csv_to_gcs(met_file, bucket_name, filepath)
+
+if __name__ == "__main__":
+  main()
