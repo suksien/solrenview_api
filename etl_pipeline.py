@@ -59,7 +59,7 @@ logging.basicConfig(filename='logs.txt', level=logging.INFO, filemode='a')
 # simulate daily extraction
 from datetime import date, timedelta
 
-d1 = date(2026, 1, 2)
+d1 = date(2025, 12, 24)
 d2 = d1 + timedelta(days=1)
 
 ndays = (date.today() - d1).days
@@ -68,6 +68,7 @@ logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} 
 start_date_arr = [d1.strftime('%Y-%m-%d')]
 end_date_arr = [d2.strftime('%Y-%m-%d')]
 
+ndays = 3
 for i in range(ndays - 1):
   d1 += timedelta(days=1)
   d2 += timedelta(days=1)

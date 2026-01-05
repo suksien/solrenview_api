@@ -1,19 +1,14 @@
 import pandas as pd
 import glob
 import numpy as np
+from datetime import date
+import shutil
 
-def hack():
-  elec_files, met_file = electrical_and_met_files() # ok
-  df = concat_all_electrical_files(elec_files) # ok
-  met_df = resample_met_15min(met_file) # ok
-
-  return df, met_df
-
-  update_electrical_with_met(df, met_file)
-  df.to_csv('processed.csv')
+staging_dir = 'data/waiting_to_load/'
+loaded_dir = 'data/loaded/'
 
 def electrical_and_met_files():
-  all_files = glob.glob('waiting_to_load/*')
+  all_files = glob.glob(staging_dir + '*')
   met_file = [file for file in all_files if file.split('/')[-1].startswith('MET')][0]
   elec_files = [file for file in all_files if not file.split('/')[-1].startswith('MET')]
   return (elec_files, met_file)
@@ -31,9 +26,6 @@ def concat_all_electrical_files(elec_files):
 
   df = pd.concat(all_data)
   return df
-
-def update_electrical_with_met(df, met_file):
-  met_df = pd.read_csv(met_file, skiprows=[0, 2, 3])
 
 def resample_electrical_15min(file):
     df = pd.read_csv(file)
@@ -71,3 +63,18 @@ def resample_met_15min(filename):
                            'Panel1_Temp_Avg': 'tmod'}, inplace=True)
 
     return met_df
+
+def main():
+  elec_files, met_file = electrical_and_met_files()
+  elec_df = concat_all_electrical_files(elec_files)
+  met_df = resample_met_15min(met_file)
+  merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
+  today = date.today()
+  merged_df.to_csv(loaded_dir + f'processed_{today.strftime('%Y-%m-%d')}.csv', index=False)
+
+  all_files = glob.glob(staging_dir + '*')
+  for f in all_files:
+    shutil.move(f, loaded_dir)
+
+if __name__ == '__main__':
+   main()
