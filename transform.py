@@ -1,16 +1,26 @@
 import pandas as pd
-import glob
 import numpy as np
-from datetime import date
 import shutil
+from google.cloud import storage, bigquery
 
-staging_dir = 'data/waiting_to_load/'
-loaded_dir = 'data/loaded/'
+# staging_dir = 'data/waiting_to_load/'
+# loaded_dir = 'data/loaded/'
+# staging_files = []
 
-def electrical_and_met_files():
-  all_files = glob.glob(staging_dir + '*')
+storage_client = storage.Client()
+bucket = storage_client.bucket('uni_toledo')
+
+def get_electrical_and_met_files():
+  #all_files = glob.glob(staging_dir + '*')
+  all_blobs = storage_client.list_blobs('uni_toledo', prefix='data/waiting_to_load')
+  all_files =[blob.name for blob in all_blobs if blob.name.endswith('csv') or blob.name.endswith('txt')]
+
   met_file = [file for file in all_files if file.split('/')[-1].startswith('MET')][0]
   elec_files = [file for file in all_files if not file.split('/')[-1].startswith('MET')]
+
+  # TODO: select electrical file within the last date from met file
+  # append these files to `staging_file` array
+  # append met file ONLY if its last date < latest electrical file 
   return (elec_files, met_file)
 
 def concat_all_electrical_files(elec_files):
@@ -28,7 +38,10 @@ def concat_all_electrical_files(elec_files):
   return df
 
 def resample_electrical_15min(file):
-    df = pd.read_csv(file)
+    blob = bucket.blob(file)
+    with blob.open('r') as file:
+      df = pd.read_csv(file)
+
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     inverter_arr = list(set(df['inverter']))
     string_arr = list(set(df['str']))
@@ -49,7 +62,10 @@ def resample_electrical_15min(file):
     return new_df
 
 def resample_met_15min(filename):
-    met_df = pd.read_csv(filename, skiprows=[0, 2, 3])
+    blob = bucket.blob(filename)
+    with blob.open('r') as file:
+      met_df = pd.read_csv(file, skiprows=[0, 2, 3])
+
     met_df['timestamp'] = pd.to_datetime(met_df['TIMESTAMP'])
     met_df = met_df.resample('15Min', on='timestamp')['GHI_TS_Avg', 
                                                       'POA_TS_Avg', 
@@ -64,17 +80,25 @@ def resample_met_15min(filename):
 
     return met_df
 
+def load_df_to_bigquery(df, table_id):
+  client = bigquery.Client()
+  job_config = bigquery.LoadJobConfig()
+  job = client.load_table_from_dataframe(df, table_id, job_config=job_config)
+  job.result()
+  # print(f'Loaded {table.num_rows} rows and {len(table.schema)} to {table_id}')
+
 def main():
-  elec_files, met_file = electrical_and_met_files()
+  elec_files, met_file = get_electrical_and_met_files()
   elec_df = concat_all_electrical_files(elec_files)
   met_df = resample_met_15min(met_file)
   merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
-  today = date.today()
-  merged_df.to_csv(loaded_dir + f'processed_{today.strftime('%Y-%m-%d')}.csv', index=False)
 
-  all_files = glob.glob(staging_dir + '*')
-  for f in all_files:
-    shutil.move(f, loaded_dir)
+  load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
+
+  # all_files = glob.glob(staging_dir + '*')
+  
+  # for f in all_files:
+  #   shutil.move(f, loaded_dir)
 
 if __name__ == '__main__':
    main()

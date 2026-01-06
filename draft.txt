@@ -3,6 +3,8 @@
 —> 2 data sources
 
 3. Load electrical and MET data to bucket
+- waiting
+- loaded
 
 4. Trigger BigQuery master table update upon new files in bucket
 
