@@ -3,26 +3,38 @@ import numpy as np
 import shutil
 from google.cloud import storage, bigquery
 
-# staging_dir = 'data/waiting_to_load/'
-# loaded_dir = 'data/loaded/'
-# staging_files = []
-
 storage_client = storage.Client()
 bucket = storage_client.bucket('uni_toledo')
 
 def get_electrical_and_met_files():
-  #all_files = glob.glob(staging_dir + '*')
   all_blobs = storage_client.list_blobs('uni_toledo', prefix='data/waiting_to_load')
   all_files =[blob.name for blob in all_blobs if blob.name.endswith('csv') or blob.name.endswith('txt')]
 
   met_file = [file for file in all_files if file.split('/')[-1].startswith('MET')][0]
   elec_files = [file for file in all_files if not file.split('/')[-1].startswith('MET')]
 
-  # TODO: select electrical file within the last date from met file
-  # append these files to `staging_file` array
-  # append met file ONLY if its last date < latest electrical file 
   return (elec_files, met_file)
 
+def select_files_for_staging(elec_files, met_file):
+  blob = bucket.blob(met_file)
+  with blob.open('r') as file:
+    met_df = pd.read_csv(file, skiprows=[0, 2, 3])
+
+  last_date_met = pd.to_datetime(met_df.tail(1)['TIMESTAMP'])
+  # arr = [file.split('/')[-1].split('_')[0] for file in elec_files]
+  # arr.sort()
+  # last_date_elec = pd.to_datetime(arr[-1])
+
+  # append elec files whose start date < last date of met file
+  staging_files = []
+  for file in elec_files:
+      start_date_file = file.split('/')[-1].split('.csv')[0]
+      compare_dates = pd.to_datetime(start_date_file) <= last_date_met
+      if compare_dates.item():
+          staging_files.append(file)
+
+  return staging_files
+   
 def concat_all_electrical_files(elec_files):
   all_data = []
 
@@ -85,20 +97,33 @@ def load_df_to_bigquery(df, table_id):
   job_config = bigquery.LoadJobConfig()
   job = client.load_table_from_dataframe(df, table_id, job_config=job_config)
   job.result()
-  # print(f'Loaded {table.num_rows} rows and {len(table.schema)} to {table_id}')
+  if job.output_rows == len(df):
+      print(f"Loaded {job.output_rows} rows into {table_id}.")
+      return 'success'
+  else:
+     return None
 
 def main():
   elec_files, met_file = get_electrical_and_met_files()
-  elec_df = concat_all_electrical_files(elec_files)
+  staging_files = select_files_for_staging(elec_files, met_file)
+
+  elec_df = concat_all_electrical_files(staging_files)
   met_df = resample_met_15min(met_file)
   merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
 
-  load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
-
-  # all_files = glob.glob(staging_dir + '*')
+  load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
   
-  # for f in all_files:
-  #   shutil.move(f, loaded_dir)
+  if load_result == 'success':
+    print("Moving files to Loaded directory")
+
+    for file in staging_files:
+        
+        blob = bucket.blob(file)
+        dest_filename = f'data/loaded/{file.split('/')[-1]}'
+        bucket.copy_blob(blob, bucket, dest_filename)
+        print(f"Copied {blob.name} to {dest_filename}")
+        blob.delete()
+        print(f"Original file {blob.name} deleted.")
 
 if __name__ == '__main__':
    main()

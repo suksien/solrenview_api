@@ -70,7 +70,7 @@ def main():
   start_date_arr = [d1.strftime('%Y-%m-%d')]
   end_date_arr = [d2.strftime('%Y-%m-%d')]
 
-  ndays = 2
+  ndays = 5
   for i in range(ndays - 1):
     d1 += timedelta(days=1)
     d2 += timedelta(days=1)
@@ -85,12 +85,12 @@ def main():
     start_date, end_date = start_date_arr[i], end_date_arr[i]
     df = extract_electrical_data(start_date, end_date)
     
-    filename = f'{start_date}_{end_date}.csv'
-    upload_df_to_gcs(df, bucket_name , filepath, filename)
+    filename = f'{start_date}.csv'
+    upload_df_to_gcs(df, bucket_name, filepath, filename)
   
   # met data
-  met_file = glob.glob('data/waiting_to_load/MET*')[0]
-  upload_csv_to_gcs(met_file, bucket_name, filepath)
+  #met_file = glob.glob('data/waiting_to_load/MET*')[0]
+  #upload_csv_to_gcs(met_file, bucket_name, filepath)
 
 if __name__ == "__main__":
   main()
