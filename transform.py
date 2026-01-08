@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import shutil
 from google.cloud import storage, bigquery
 
 storage_client = storage.Client()
@@ -107,10 +106,14 @@ def main():
   elec_files, met_file = get_electrical_and_met_files()
   staging_files = select_files_for_staging(elec_files, met_file)
 
+  print(staging_files)
+
   elec_df = concat_all_electrical_files(staging_files)
   met_df = resample_met_15min(met_file)
   merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
 
+  del elec_df
+  del met_df
   load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
   
   if load_result == 'success':
@@ -121,7 +124,7 @@ def main():
         blob = bucket.blob(file)
         dest_filename = f'data/loaded/{file.split('/')[-1]}'
         bucket.copy_blob(blob, bucket, dest_filename)
-        print(f"Copied {blob.name} to {dest_filename}")
+        print(f".... Copied {blob.name} to {dest_filename}")
         blob.delete()
         print(f"Original file {blob.name} deleted.")
 
