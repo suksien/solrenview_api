@@ -1,6 +1,7 @@
 import pandas as pd
 import logging
 import utils
+import glob
 from datetime import date, timedelta
 try:
   from google.cloud import storage
@@ -104,10 +105,6 @@ def main():
   # logging
   logging.basicConfig(filename='logs.txt', level=logging.INFO, filemode='a')
 
-  # TODO (1): logic for starting date
-  # create a text file that contains the last update date
-  # TODO (2): Solve SFTP extraction
-
   d1 = get_start_date()
   d2 = d1 + timedelta(days=1)
   ndays = (date.today() - d1).days
@@ -130,6 +127,9 @@ def main():
     filename = f'{start_date}.csv'
     upload_df_to_gcs(df, bucket_name, filepath, filename)
 
+  # met data
+  met_file = glob.glob('MET*txt')[0]
+  upload_csv_to_gcs(met_file, bucket_name, filepath)
 
 if __name__ == "__main__":
   main()
