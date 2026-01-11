@@ -1,13 +1,11 @@
 import pandas as pd
-from matplotlib import pyplot as plt
-import numpy as np
 import logging
 import utils
+from datetime import date, timedelta
 try:
   from google.cloud import storage
 except ImportError:
   pass
-import glob
 
 # extract electrical data from web api into csv file
 def extract_electrical_data(start_date, end_date):
@@ -23,9 +21,6 @@ def extract_electrical_data(start_date, end_date):
   
   df = pd.concat(df_arr)
   return df
-  #df.to_csv(f'data/extracted/{start_date}_{end_date}.csv')
-  #df.to_csv(f'/Users/suksientie/Desktop/solren_data/{start_date}_{end_date}.csv')
-  
 
 # https://stackoverflow.com/questions/40683702/upload-csv-file-to-google-cloud-storage-using-python
 def upload_csv_to_gcs(filename, bucket_name, filepath):
@@ -54,28 +49,41 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
     
     logging.info(f"DataFrame uploaded to gs://{bucket_name}/{blob_name}")
 
-def main():
+def get_start_date():
+  f = open('start_date.txt', 'r')
+  last_yr, last_mo, last_dt = [int(num) for num in f.readline().split('-')]
+  f.close()
+
+  return date(last_yr, last_mo, last_dt)
+
+def write_next_start_date(date_str):
+  f = open('start_date.txt', 'w')
+  f.write(date_str)
+  f.close()
+
+def get_date_arrays(start_date_obj, end_date_obj, ndays):
+    start_date_arr = [start_date_obj.strftime('%Y-%m-%d')]
+    end_date_arr = [end_date_obj.strftime('%Y-%m-%d')]
+
+    for _ in range(ndays):
+      start_date_obj += timedelta(days=1)
+      end_date_obj += timedelta(days=1)
+      start_date_arr.append(start_date_obj.strftime('%Y-%m-%d'))
+      end_date_arr.append(end_date_obj.strftime('%Y-%m-%d'))
+
+    return start_date_arr, end_date_arr
+
+##########################
+def main_mock_daily():
   # logging
   logging.basicConfig(filename='logs.txt', level=logging.INFO, filemode='a')
 
-  # simulate daily extraction
-  from datetime import date, timedelta
-
   d1 = date(2025, 12, 24)
   d2 = d1 + timedelta(days=1)
-
   ndays = (date.today() - d1).days
   logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
 
-  start_date_arr = [d1.strftime('%Y-%m-%d')]
-  end_date_arr = [d2.strftime('%Y-%m-%d')]
-
-  ndays = 5
-  for i in range(ndays - 1):
-    d1 += timedelta(days=1)
-    d2 += timedelta(days=1)
-    start_date_arr.append(d1.strftime('%Y-%m-%d'))
-    end_date_arr.append(d2.strftime('%Y-%m-%d'))
+  start_date_arr, end_date_arr = get_date_arrays(d1, d2, ndays - 1)
 
   bucket_name = 'uni_toledo'
   filepath = 'data/waiting_to_load'
@@ -91,6 +99,37 @@ def main():
   # met data
   #met_file = glob.glob('data/waiting_to_load/MET*')[0]
   #upload_csv_to_gcs(met_file, bucket_name, filepath)
+
+def main():
+  # logging
+  logging.basicConfig(filename='logs.txt', level=logging.INFO, filemode='a')
+
+  # TODO (1): logic for starting date
+  # create a text file that contains the last update date
+  # TODO (2): Solve SFTP extraction
+
+  d1 = get_start_date()
+  d2 = d1 + timedelta(days=1)
+  ndays = (date.today() - d1).days
+  if ndays < 0:
+    raise ValueError(f"Negative ndays ({ndays}) is not allowed")
+  
+  logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
+  ndays = 5
+  start_date_arr, end_date_arr = get_date_arrays(d1, d2, ndays - 1)
+  write_next_start_date(end_date_arr[-1])
+
+  bucket_name = 'uni_toledo'
+  filepath = 'data/waiting_to_load'
+  
+  # electrical data
+  for i in range(len(start_date_arr)):
+    start_date, end_date = start_date_arr[i], end_date_arr[i]
+    df = extract_electrical_data(start_date, end_date)
+    
+    filename = f'{start_date}.csv'
+    upload_df_to_gcs(df, bucket_name, filepath, filename)
+
 
 if __name__ == "__main__":
   main()
