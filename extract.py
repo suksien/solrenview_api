@@ -84,6 +84,7 @@ def main_mock_daily():
   ndays = (date.today() - d1).days
   logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
 
+  ndays = 3
   start_date_arr, end_date_arr = get_date_arrays(d1, d2, ndays - 1)
 
   bucket_name = 'uni_toledo'
@@ -95,8 +96,10 @@ def main_mock_daily():
     df = extract_electrical_data(start_date, end_date)
     
     filename = f'{start_date}.csv'
-    upload_df_to_gcs(df, bucket_name, filepath, filename)
+    #upload_df_to_gcs(df, bucket_name, filepath, filename)
   
+  return df
+
   # met data
   #met_file = glob.glob('data/waiting_to_load/MET*')[0]
   #upload_csv_to_gcs(met_file, bucket_name, filepath)
@@ -128,8 +131,10 @@ def main():
     upload_df_to_gcs(df, bucket_name, filepath, filename)
 
   # met data
-  met_file = glob.glob('MET*txt')[0]
-  upload_csv_to_gcs(met_file, bucket_name, filepath)
+  met_files = glob.glob('MET*txt')
+  if len(met_files) > 0:
+    logging.info(f"Uploading {met_files[-1]} met file")
+    upload_csv_to_gcs(met_files[-1], bucket_name, filepath)
 
 if __name__ == "__main__":
   main()

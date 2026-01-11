@@ -30,3 +30,5 @@ INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2025-12-30.
 INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2025-12-31.csv
 INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-01-01.csv
 INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-01-02.csv
+INFO:root:=== Downloading 18 days of data from 2025-12-24 to 2026-01-11 ===
+INFO:root:File uploaded to gs://uni_toledo/data/waiting_to_load/MET 2026-01-09.txt

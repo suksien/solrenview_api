@@ -9,7 +9,7 @@ def get_electrical_and_met_files():
   all_blobs = storage_client.list_blobs('uni_toledo', prefix='data/waiting_to_load')
   all_files =[blob.name for blob in all_blobs if blob.name.endswith('csv') or blob.name.endswith('txt')]
 
-  met_file = [file for file in all_files if file.split('/')[-1].startswith('MET')][0]
+  met_file = [file for file in all_files if file.split('/')[-1].startswith('MET')][-1] # latest met file
   elec_files = [file for file in all_files if not file.split('/')[-1].startswith('MET')]
 
   return (elec_files, met_file)
