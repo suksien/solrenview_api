@@ -1,4 +1,5 @@
 import paramiko
+import pandas as pd
 
 # sftp connection params
 hostname = 'sftp.firstsolar.com'
@@ -19,7 +20,10 @@ sftp = client.open_sftp()
 homedir = '/home/university of Toledo/'
 files = sftp.listdir(homedir)
 
-met_files = [file for file in files if 'MET 2025-12' in file]
+met_files = [file for file in files if 'MET 2026' in file]
 latest_met_file = met_files[-1]
 
 sftp.get(homedir + latest_met_file, latest_met_file)
+
+df = pd.read_csv(latest_met_file, low_memory=False)
+df.to_csv(latest_met_file + '.txt')
