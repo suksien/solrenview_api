@@ -115,7 +115,7 @@ def main():
     raise ValueError(f"Negative ndays ({ndays}) is not allowed")
   
   logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
-  ndays = 5
+  ndays = 3
   start_date_arr, end_date_arr = get_date_arrays(d1, d2, ndays - 1)
   write_next_start_date(end_date_arr[-1])
 
@@ -134,7 +134,7 @@ def main():
   met_files = glob.glob('MET*txt')
   if len(met_files) > 0:
     logging.info(f"Uploading {met_files[-1]} met file")
-    upload_csv_to_gcs(met_files[-1], bucket_name, filepath)
+    # upload_csv_to_gcs(met_files[-1], bucket_name, filepath)
 
 if __name__ == "__main__":
   main()
