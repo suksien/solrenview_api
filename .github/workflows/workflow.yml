@@ -32,4 +32,4 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: Run extraction script
-      run: python extract.py
+      run: python /home/runner/work/solrenview_api/extract.py
