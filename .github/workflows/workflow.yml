@@ -28,6 +28,11 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # FIRST step (always do this!): checkout repo to github runner
