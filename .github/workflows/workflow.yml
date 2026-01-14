@@ -30,16 +30,16 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+    # FIRST step (always do this!): checkout repo to github runner
+    - name: Check out repository code
+      uses: actions/checkout@v4 # Use the official action
+    
     # set up Python version
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.13'
-
-    # FIRST step: necessary checkout
-    - name: Check out repository code
-      uses: actions/checkout@v4 # Use the official action
-      
+        
     # install dependencies
     - name: Install dependencies
       run: |
