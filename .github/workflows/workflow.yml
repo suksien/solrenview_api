@@ -36,17 +36,15 @@ jobs:
       with:
         python-version: '3.13'
 
+    # FIRST step: necessary checkout
+    - name: Check out repository code
+      uses: actions/checkout@v4 # Use the official action
+      
     # install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r ./requirements.txt
-
-  # this Action should follow steps to set up Python build environment
-
-    # necessary checkout
-    - name: Check out repository code
-      uses: actions/checkout@v4 # Use the official action
       
     # Runs a single command using the runners shell
     - name: Run extraction script
