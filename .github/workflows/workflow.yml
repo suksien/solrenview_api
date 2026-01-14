@@ -46,6 +46,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r ./requirements.txt
       
+    # authenticate with Google Cloudn
+    - uses: 'google-github-actions/auth@v3'
+      with:
+        project_id: 'solren-view-etl'
+        workload_identity_provider: 'projects/924342529586/locations/global/workloadIdentityPools/github/providers/my-repo'
+    
     # Runs a single command using the runners shell
     - name: Run extraction script
       run: python ./extract.py
