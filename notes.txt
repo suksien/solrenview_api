@@ -1,0 +1,39 @@
+### Terminal commands to set up Github Actions authentication with Google Cloud
+
+gcloud iam workload-identity-pools create "github" \                   
+  --project="solren-view-etl" \
+  --location="global" \                                             
+  --display-name="GitHub Actions Pool"
+
+gcloud iam workload-identity-pools providers describe "my-repo" \
+  --project="solren-view-etl" \
+  --location="global" \
+  --workload-identity-pool="github" \
+  --format="value(name)"
+
+gcloud iam workload-identity-pools providers create-oidc "my-repo" \
+  --project="solren-view-etl" \
+  --location="global" \
+  --workload-identity-pool="github" \
+  --display-name="My GitHub repo Provider" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
+  --attribute-condition="assertion.repository_owner == 'suksien'" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
+
+gcloud iam service-accounts add-iam-policy-binding "solren-view-etl@appspot.gserviceaccount.com" \
+  --project="solren-view-etl" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/924342529586/locations/global/workloadIdentityPools/github/attribute.repository/suksien/solrenview_api"
+
+# Change settings on GCP:
+Google Cloud console > IAM > Workload Identity Federation > Github Actions Pool > Grant Access > Grant access using service account impersonation
+
+- Select service account: App Engine service account
+- Select principals: repository_owner (attribute name), suksien (attribute value)
+
+# Grant roles to service account
+Grant the service account Storage Admin / Storage Object Creator role
+
+# References:
+https://github.com/marketplace/actions/authenticate-to-google-cloud
+https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions
