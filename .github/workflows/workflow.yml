@@ -56,7 +56,8 @@ jobs:
       with:
         project_id: 'solren-view-etl'
         workload_identity_provider: 'projects/924342529586/locations/global/workloadIdentityPools/github/providers/my-repo'
-    
+        service_account: 'solren-view-etl@appspot.gserviceaccount.com' #
+        
     # Runs a single command using the runners shell
     - name: Run extraction script
       run: python ./extract.py
