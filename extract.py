@@ -84,7 +84,7 @@ def main_mock_daily():
   ndays = (date.today() - d1).days
   logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
 
-  ndays = 3
+  ndays = 1
   start_date_arr, end_date_arr = get_date_arrays(d1, d2, ndays - 1)
 
   bucket_name = 'uni_toledo'
