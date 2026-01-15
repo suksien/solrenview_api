@@ -51,7 +51,7 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
     logging.info(f"DataFrame uploaded to gs://{bucket_name}/{blob_name}")
 
 def get_start_date():
-  with open('start_date', 'r') as f:
+  with open('start_date.txt', 'r') as f:
     last_yr, last_mo, last_dt = [int(num) for num in f.readline().split('-')]
 
   return date(last_yr, last_mo, last_dt)
