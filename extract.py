@@ -115,7 +115,7 @@ def main():
     raise ValueError(f"Negative ndays ({ndays}) is not allowed")
   
   logging.info(f"=== Downloading {ndays} days of data from {d1} to {date.today()} ===")
-  ndays = 3
+  ndays = 1
   start_date_arr, end_date_arr = get_date_arrays(d1, d2, ndays - 1)
   write_next_start_date(end_date_arr[-1])
 
