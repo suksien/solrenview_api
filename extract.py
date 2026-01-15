@@ -51,16 +51,14 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
     logging.info(f"DataFrame uploaded to gs://{bucket_name}/{blob_name}")
 
 def get_start_date():
-  f = open('start_date.txt', 'r')
-  last_yr, last_mo, last_dt = [int(num) for num in f.readline().split('-')]
-  f.close()
+  with open('start_date', 'r') as f:
+    last_yr, last_mo, last_dt = [int(num) for num in f.readline().split('-')]
 
   return date(last_yr, last_mo, last_dt)
 
 def write_next_start_date(date_str):
-  f = open('start_date.txt', 'w')
-  f.write(date_str)
-  f.close()
+  with open('start_date.txt', 'w') as f:
+    f.write(date_str)
 
 def get_date_arrays(start_date_obj, end_date_obj, ndays):
     start_date_arr = [start_date_obj.strftime('%Y-%m-%d')]
