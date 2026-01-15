@@ -132,7 +132,9 @@ def main():
   met_files = glob.glob('MET*txt')
   if len(met_files) > 0:
     logging.info(f"Uploading {met_files[-1]} met file")
-    # upload_csv_to_gcs(met_files[-1], bucket_name, filepath)
+    upload_csv_to_gcs(met_files[-1], bucket_name, filepath)
+  else:
+    logging.info("No MET file can be found")
 
 if __name__ == "__main__":
   main()
