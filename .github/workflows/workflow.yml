@@ -57,7 +57,12 @@ jobs:
         project_id: 'solren-view-etl'
         workload_identity_provider: 'projects/924342529586/locations/global/workloadIdentityPools/github/providers/my-repo'
         service_account: 'solren-view-etl@appspot.gserviceaccount.com' #
-        
+
+    # test connection 
+    - name: Test Full URL Connectivity
+      run: |
+        curl -I 'https://www.solrenview.com/srvp/FSC/SRV/getAnalyticsInfo.php?deviceindices=0%5E35346%5EInverter+1++%5B1013821839182+PVI+60TL%5D%5E3%3B0%5E35347%5EInverter+2++%5B1013821839191+PVI+60TL%5D%5E3&parList=vdc%3Bvdc2%3Bvdc3%3Bvdc4%3Bidc%3Bidc2%3Bidc3%3Bidc4&deviceType=0%5E35346%5EInverter+1+%5B1013821839182+PVI+60TL%5D%5E3%3B0%5E35347%5EInverter+2+%5B1013821839191+PVI+60TL%5D%5E3&siteId=6073&queryNo=4&startIntervalTs=2026-01-03+04%3A00%3A00&endIntervalTs=2026-01-03+04%3A05%3A00&endDuration=2026-01-04+00%3A00%3A00&dataInterval=300&hasRg=0&maxLimit=360000&gauge=0+&dataIntervalStr=Minute'
+    
     # Runs a single command using the runners shell
     - name: Run extraction script
       run: python ./extract.py
