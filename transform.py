@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
+from datetime import date
 from google.cloud import storage, bigquery
 
 storage_client = storage.Client()
-bucket = storage_client.bucket('uni_toledo')
+bucket_name = 'uni_toledo'
+bucket = storage_client.bucket(bucket_name)
 
 def get_electrical_and_met_files():
   all_blobs = storage_client.list_blobs('uni_toledo', prefix='data/waiting_to_load')
@@ -27,9 +29,6 @@ def select_files_for_staging(elec_files, met_file):
     met_df = pd.read_csv(file, skiprows=[0, 2, 3])
 
   last_date_met = pd.to_datetime(met_df.tail(1)['TIMESTAMP'])
-  # arr = [file.split('/')[-1].split('_')[0] for file in elec_files]
-  # arr.sort()
-  # last_date_elec = pd.to_datetime(arr[-1])
 
   # append elec files whose start date < last date of met file
   staging_files = []
@@ -109,34 +108,67 @@ def load_df_to_bigquery(df, table_id):
   else:
      return None
 
+def move_files(files_list, directory):
+  for file in files_list:
+    blob = bucket.blob(file)
+    dest_filename = f'data/{directory}/{file.split('/')[-1]}'
+    bucket.copy_blob(blob, bucket, dest_filename)
+    print(f".... Copied {blob.name} to {dest_filename}")
+    blob.delete()
+    print(f"Original file {blob.name} deleted.")
+
+# copied from extract.py -- TODO: extract this out to util.py
+def upload_df_to_gcs(df, bucket_name, filepath, filename):
+    """Uploads a pandas DataFrame to a GCS bucket as a CSV."""
+    
+    # 1. Convert DataFrame to a CSV string buffer
+    csv = df.to_csv(index=False)
+    
+    # 2. Initialize GCS client and get the bucket
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob_name = f'{filepath}/{filename}'
+    blob = bucket.blob(blob_name)
+    
+    # 3. Upload the CSV data from the buffer
+    blob.upload_from_string(csv, content_type='text/csv')
+    
+    print(f"DataFrame uploaded to gs://{bucket_name}/{blob_name}")
+
 def main():
   elec_files, met_file = get_electrical_and_met_files()
 
   if len(elec_files) > 0 and met_file is not None:
     staging_files = select_files_for_staging(elec_files, met_file)
-
     print(staging_files)
 
-    elec_df = concat_all_electrical_files(staging_files)
-    met_df = resample_met_15min(met_file)
-    merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
+    if len(staging_files) > 0:
+      elec_df = concat_all_electrical_files(staging_files)
+      met_df = resample_met_15min(met_file)
+      merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
 
-    del elec_df
-    del met_df
-    load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
-    
-    if load_result == 'success':
-      print("Moving files to Loaded directory")
+      del elec_df
+      del met_df
+      load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
+      
+      if load_result == 'success':
+        print("Moving files to Loaded directory")
+        move_files(staging_files, 'loaded')
 
-      for file in staging_files:
-          
-          blob = bucket.blob(file)
-          dest_filename = f'data/loaded/{file.split('/')[-1]}'
-          bucket.copy_blob(blob, bucket, dest_filename)
-          print(f".... Copied {blob.name} to {dest_filename}")
-          blob.delete()
-          print(f"Original file {blob.name} deleted.")
+      else:
+        print("Data failed to load to BigQuery")
 
+        # TODO: retry two more times
+        # then load files to dlq
+        move_files(staging_files, 'error')
+
+        today_str = date.today().strftime('%Y-%m-%d')
+        upload_df_to_gcs(merged_df, bucket_name, 'data/error', f'merged_{today_str}.csv')
+        upload_df_to_gcs(elec_df, bucket_name, 'data/error', f'elec_{today_str}.csv')
+        upload_df_to_gcs(met_df, bucket_name, 'data/error', f'met_{today_str}.csv')
+
+    else:
+      print("No file is being staged")
   else:
      print("No electrical or met file can be found")
 
