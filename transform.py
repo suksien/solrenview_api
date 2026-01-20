@@ -7,9 +7,16 @@ bucket = storage_client.bucket('uni_toledo')
 
 def get_electrical_and_met_files():
   all_blobs = storage_client.list_blobs('uni_toledo', prefix='data/waiting_to_load')
-  all_files =[blob.name for blob in all_blobs if blob.name.endswith('csv') or blob.name.endswith('txt')]
+  all_files = [blob.name for blob in all_blobs if blob.name.endswith('csv') or blob.name.endswith('txt')]
 
-  met_file = [file for file in all_files if file.split('/')[-1].startswith('MET')][-1] # latest met file
+  met_file = []
+  for file in all_files:
+    if file.split('/')[-1].startswith('MET'):
+        met_file.append(file)
+
+  # handle missing met file
+  met_file = met_file[-1] if len(met_file) > 0 else None
+  
   elec_files = [file for file in all_files if not file.split('/')[-1].startswith('MET')]
 
   return (elec_files, met_file)
@@ -104,29 +111,34 @@ def load_df_to_bigquery(df, table_id):
 
 def main():
   elec_files, met_file = get_electrical_and_met_files()
-  staging_files = select_files_for_staging(elec_files, met_file)
 
-  print(staging_files)
+  if len(elec_files) > 0 and met_file is not None:
+    staging_files = select_files_for_staging(elec_files, met_file)
 
-  elec_df = concat_all_electrical_files(staging_files)
-  met_df = resample_met_15min(met_file)
-  merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
+    print(staging_files)
 
-  del elec_df
-  del met_df
-  load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
-  
-  if load_result == 'success':
-    print("Moving files to Loaded directory")
+    elec_df = concat_all_electrical_files(staging_files)
+    met_df = resample_met_15min(met_file)
+    merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
 
-    for file in staging_files:
-        
-        blob = bucket.blob(file)
-        dest_filename = f'data/loaded/{file.split('/')[-1]}'
-        bucket.copy_blob(blob, bucket, dest_filename)
-        print(f".... Copied {blob.name} to {dest_filename}")
-        blob.delete()
-        print(f"Original file {blob.name} deleted.")
+    del elec_df
+    del met_df
+    load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
+    
+    if load_result == 'success':
+      print("Moving files to Loaded directory")
+
+      for file in staging_files:
+          
+          blob = bucket.blob(file)
+          dest_filename = f'data/loaded/{file.split('/')[-1]}'
+          bucket.copy_blob(blob, bucket, dest_filename)
+          print(f".... Copied {blob.name} to {dest_filename}")
+          blob.delete()
+          print(f"Original file {blob.name} deleted.")
+
+  else:
+     print("No electrical or met file can be found")
 
 if __name__ == '__main__':
    main()
