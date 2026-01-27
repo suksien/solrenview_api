@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from google.cloud import storage, bigquery
+from alert import send_email
 
 storage_client = storage.Client()
 bucket_name = 'uni_toledo'
@@ -144,7 +145,7 @@ def load_to_warehouse_with_retries(merged_df, elec_df, met_df, staging_files, re
       del met_df
       print("Moving files to Loaded directory")
       move_files(staging_files, 'loaded')
-      return
+      return "Successfully loaded to BQ"
     else:
       print("Data failed to load to BigQuery")
       print("Retrying...")
@@ -157,10 +158,11 @@ def load_to_warehouse_with_retries(merged_df, elec_df, met_df, staging_files, re
   upload_df_to_gcs(merged_df, bucket_name, 'data/error', f'merged_{today_str}.csv')
   upload_df_to_gcs(elec_df, bucket_name, 'data/error', f'elec_{today_str}.csv')
   upload_df_to_gcs(met_df, bucket_name, 'data/error', f'met_{today_str}.csv')
+  return "Error loading to BQ - files routed to DLQ"
 
 def main():
   elec_files, met_file = get_electrical_and_met_files()
-
+  
   if len(elec_files) > 0 and met_file is not None:
     staging_files = select_files_for_staging(elec_files, met_file)
     
@@ -169,12 +171,17 @@ def main():
       met_df = resample_met_15min(met_file)
       merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
 
-      load_to_warehouse_with_retries(merged_df, elec_df, met_df, staging_files)
+      load_result = load_to_warehouse_with_retries(merged_df, elec_df, met_df, staging_files)
 
     else:
-      print("No file is being staged")
+      load_result = "No file is being staged"
+      print(load_result)
   else:
-     print("No electrical or met file can be found")
+      load_result = "No electrical or met file can be found"
+      print(load_result)
+
+  today_str = date.today().strftime('%Y-%m-%d')
+  send_email('hahasuksien@yahoo.com.my', f'Transform job results for {today_str}', load_result)
 
 if __name__ == '__main__':
    main()
