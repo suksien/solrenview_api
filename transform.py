@@ -135,37 +135,41 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
     
     print(f"DataFrame uploaded to gs://{bucket_name}/{blob_name}")
 
+def load_to_warehouse_with_retries(merged_df, elec_df, met_df, staging_files, retry_ntimes=2):
+  while retry_ntimes >= 0:
+    load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
+
+    if load_result == 'success':
+      del elec_df
+      del met_df
+      print("Moving files to Loaded directory")
+      move_files(staging_files, 'loaded')
+      return
+    else:
+      print("Data failed to load to BigQuery")
+      print("Retrying...")
+      retry_ntimes -= 1  
+
+  print("Moving files to Error directory")
+  move_files(staging_files, 'error')
+
+  today_str = date.today().strftime('%Y-%m-%d')
+  upload_df_to_gcs(merged_df, bucket_name, 'data/error', f'merged_{today_str}.csv')
+  upload_df_to_gcs(elec_df, bucket_name, 'data/error', f'elec_{today_str}.csv')
+  upload_df_to_gcs(met_df, bucket_name, 'data/error', f'met_{today_str}.csv')
+
 def main():
   elec_files, met_file = get_electrical_and_met_files()
 
   if len(elec_files) > 0 and met_file is not None:
     staging_files = select_files_for_staging(elec_files, met_file)
-    print(staging_files)
-
+    
     if len(staging_files) > 0:
       elec_df = concat_all_electrical_files(staging_files)
       met_df = resample_met_15min(met_file)
       merged_df = pd.merge(elec_df, met_df, how='left', on='timestamp')
 
-      del elec_df
-      del met_df
-      load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
-      
-      if load_result == 'success':
-        print("Moving files to Loaded directory")
-        move_files(staging_files, 'loaded')
-
-      else:
-        print("Data failed to load to BigQuery")
-
-        # TODO: retry two more times
-        # then load files to dlq
-        move_files(staging_files, 'error')
-
-        today_str = date.today().strftime('%Y-%m-%d')
-        upload_df_to_gcs(merged_df, bucket_name, 'data/error', f'merged_{today_str}.csv')
-        upload_df_to_gcs(elec_df, bucket_name, 'data/error', f'elec_{today_str}.csv')
-        upload_df_to_gcs(met_df, bucket_name, 'data/error', f'met_{today_str}.csv')
+      load_to_warehouse_with_retries(merged_df, elec_df, met_df, staging_files)
 
     else:
       print("No file is being staged")
