@@ -7,6 +7,7 @@ from alert import send_email
 storage_client = storage.Client()
 bucket_name = 'uni_toledo'
 bucket = storage_client.bucket(bucket_name)
+table_id = "solren-view-etl.testing.master" # for testing
 
 def get_electrical_and_met_files():
   all_blobs = storage_client.list_blobs('uni_toledo', prefix='data/waiting_to_load')
@@ -100,15 +101,26 @@ def resample_met_15min(filename):
 
 def load_df_to_bigquery(df, table_id):
   client = bigquery.Client()
-  job_config = bigquery.LoadJobConfig()
-  job = client.load_table_from_dataframe(df, table_id, job_config=job_config)
-  job.result()
-  if job.output_rows == len(df):
-      print(f"Loaded {job.output_rows} rows into {table_id}.")
-      return 'success'
-  else:
-     return None
+  query = f"SELECT MAX(date) as last_date FROM {table_id}"
+  last_date = client.query(query).to_dataframe()['last_date'].iloc[0]
+  
+  print(f"Only selecting rows greater than {last_date}")
+  print(f"Original number of rows: {len(df)}")
+  df = df[df['date'] > last_date]
+  print(f"After filtering: {len(df)}")
 
+  if len(df) > 0:
+    job_config = bigquery.LoadJobConfig()
+    job = client.load_table_from_dataframe(df, table_id, job_config=job_config)
+    job.result()
+    if job.output_rows == len(df):
+        print(f"Loaded {job.output_rows} rows into {table_id}.")
+        return 'success'
+    else:
+      return None
+  else:
+    return None
+  
 def move_files(files_list, directory):
   for file in files_list:
     blob = bucket.blob(file)
@@ -138,26 +150,26 @@ def upload_df_to_gcs(df, bucket_name, filepath, filename):
 
 def load_to_warehouse_with_retries(merged_df, elec_df, met_df, staging_files, retry_ntimes=2):
   while retry_ntimes >= 0:
-    load_result = load_df_to_bigquery(merged_df, "solren-view-etl.UT_15min.master")
+    load_result = load_df_to_bigquery(merged_df, table_id)
 
     if load_result == 'success':
       del elec_df
       del met_df
-      print("Moving files to Loaded directory")
-      move_files(staging_files, 'loaded')
-      return "Successfully loaded to BQ"
+      # print("Moving files to Loaded directory")
+      # move_files(staging_files, 'loaded')
+      return f"Successfully loaded to BQ: {table_id}"
     else:
       print("Data failed to load to BigQuery")
       print("Retrying...")
       retry_ntimes -= 1  
 
   print("Moving files to Error directory")
-  move_files(staging_files, 'error')
+  # move_files(staging_files, 'error')
 
-  today_str = date.today().strftime('%Y-%m-%d')
-  upload_df_to_gcs(merged_df, bucket_name, 'data/error', f'merged_{today_str}.csv')
-  upload_df_to_gcs(elec_df, bucket_name, 'data/error', f'elec_{today_str}.csv')
-  upload_df_to_gcs(met_df, bucket_name, 'data/error', f'met_{today_str}.csv')
+  # today_str = date.today().strftime('%Y-%m-%d')
+  # upload_df_to_gcs(merged_df, bucket_name, 'data/error', f'merged_{today_str}.csv')
+  # upload_df_to_gcs(elec_df, bucket_name, 'data/error', f'elec_{today_str}.csv')
+  # upload_df_to_gcs(met_df, bucket_name, 'data/error', f'met_{today_str}.csv')
   return "Error loading to BQ - files routed to DLQ"
 
 def main():
