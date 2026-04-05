@@ -37,7 +37,7 @@ jobs:
     steps:
     # FIRST step (always do this!): checkout repo to github runner
     - name: Check out repository code
-      uses: actions/checkout@v4 # Use the official action
+      uses: actions/checkout@v5 #actions/checkout@v4 # Use the official action
     
     # set up Python version
     - name: Set up Python
