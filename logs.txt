@@ -286,3 +286,12 @@ INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-07-28.
 INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-07-29.csv
 INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-07-30.csv
 INFO:root:No MET file can be found
+INFO:root:=== Downloading 7 days of data from 2026-07-31 to 2026-08-07 ===
+INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-07-31.csv
+INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-08-01.csv
+INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-08-02.csv
+INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-08-03.csv
+INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-08-04.csv
+INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-08-05.csv
+INFO:root:DataFrame uploaded to gs://uni_toledo/data/waiting_to_load/2026-08-06.csv
+INFO:root:No MET file can be found
